@@ -1,0 +1,4 @@
+/* ตัวแปรสี ตัวอักษร และค่าตั้งต้นของทั้งเว็บ */
+:root{--bg:#f0f7ff;--surface:#fff;--primary:#2563eb;--green:#10b981;--orange:#f97316;--purple:#8b5cf6;--text:#0f172a;--muted:#64748b;--border:#e2e8f0;--shadow:0 4px 6px -1px rgba(0,0,0,.07);--radius:14px}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'IBM Plex Sans Thai',sans-serif;background:var(--bg);color:var(--text);line-height:1.5;min-height:100vh}

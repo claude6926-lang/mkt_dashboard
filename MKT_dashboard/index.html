@@ -1,0 +1,418 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Online Marketing Performance | mkt Ecom Dashboard</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="assets/css/base.css"/>
+<link rel="stylesheet" href="assets/css/layout.css"/>
+<link rel="stylesheet" href="assets/css/components.css"/>
+</head>
+<body>
+
+
+<div class="topbar">
+<header class="header">
+  <button type="button" class="brand" onclick="goHome()" aria-label="กลับไปหน้าแดชบอร์ด">
+    <span class="logo" aria-hidden="true">ME</span>
+    <span class="brand-name">Online Marketing Performance</span>
+  </button>
+  <div class="header-right">
+    <button class="btn btn-w" onclick="switchTab('dashboard')">แดชบอร์ด</button>
+    <label class="hlbl" for="filter-month">เดือน</label>
+    <select id="filter-month" class="hsel"></select>
+    <label class="hlbl" for="filter-channel">ช่องทาง</label>
+    <select id="filter-channel" class="hsel">
+      <option value="all">ทุกช่องทาง</option>
+      <option value="fb">Facebook</option>
+      <option value="line">Line OA</option>
+    </select>
+  </div>
+</header>
+<div class="tabbar"><div class="tabbar-inner">
+  <div class="tabs" id="main-tabs">
+    <button class="tab active" data-tab="dashboard" onclick="switchTab('dashboard')">แดชบอร์ด</button>
+    <button class="tab" data-tab="input" onclick="switchTab('input')">บันทึก Report</button>
+  </div>
+  <div class="report-bar">
+    <label class="rlbl" for="report-select">รายงาน</label>
+    <select id="report-select" class="rsel"></select>
+    <button type="button" class="btn bnew" onclick="openReportDialog('new')">+ สร้างแดชบอร์ดใหม่</button>
+    <button type="button" class="btn bs" onclick="openReportDialog('rename')">เปลี่ยนชื่อ</button>
+    <button type="button" class="btn bs" id="report-delete" onclick="deleteReport()">ลบรายงาน</button>
+    <span id="dev-badge" class="dev-badge" hidden>DEV</span>
+    <span id="sync-status" class="sync sync-local">โหมดทดลอง</span>
+    <button type="button" class="btn bretry" id="sync-retry" onclick="retrySave()" hidden>ลองใหม่</button>
+  </div>
+</div></div>
+</div><!-- /topbar -->
+
+<div class="container">
+
+<!-- ============================ DASHBOARD (หน้าเดียว) ============================ -->
+<div id="panel-dashboard" class="panel active">
+
+  <div class="report-head">
+    <h2 id="report-name"></h2>
+    <span id="report-meta"></span>
+  </div>
+
+  <div class="kpi-grid">
+    <div class="kpi b"><div class="lbl">Lead ที่ได้</div><div class="val" id="k-lead">—</div><div class="sub" id="k-lead-s"></div></div>
+    <div class="kpi g"><div class="lbl">มูลค่าที่คาดว่าจะขายได้</div><div class="val" id="k-pipe">—</div><div class="sub" id="k-pipe-s"></div></div>
+    <div class="kpi t"><div class="lbl">ยอดขายที่ได้</div><div class="val" id="k-sale">—</div><div class="chg" id="k-sale-c"></div></div>
+    <div class="kpi o"><div class="lbl">งบโฆษณาที่ใช้</div><div class="val" id="k-ads">—</div><div class="sub" id="k-ads-s"></div></div>
+    <div class="kpi p"><div class="lbl">ต้นทุนต่อ Lead<span class="bn">CPL</span></div><div class="val" id="k-cpl">—</div><div class="sub" id="k-cpl-s"></div></div>
+  </div>
+
+  <div class="sect"><h2>การวิเคราะห์คุณภาพ Lead</h2><span>สถานะ Lead ตั้งแต่รับเข้าจนถึงปิดการขาย</span></div>
+  <div class="sg">
+    <div class="card">
+      <div class="ct">Funnel คุณภาพ Lead</div>
+      <div class="cd" id="funnel-note">Lead → ผ่านคุณสมบัติ → เสนอราคา → ปิดการขาย</div>
+      <div class="funnel" id="funnel"></div>
+      <div class="ladder" id="ladder"></div>
+    </div>
+    <div class="card">
+      <div class="ct">สัดส่วนสถานะ Lead</div>
+      <div class="cd" id="donut-note"></div>
+      <div class="dwrap">
+        <svg viewBox="0 0 160 160" width="150" height="150" role="img" aria-label="สัดส่วนสถานะ Lead">
+          <g transform="translate(80,80)">
+            <circle r="50" fill="none" stroke="#f1f5f9" stroke-width="24"/>
+            <g transform="rotate(-90)" id="donut-arcs"></g>
+            <text y="-4" text-anchor="middle" font-size="22" font-weight="700" fill="#0f172a" id="donut-total">0</text>
+            <text y="14" text-anchor="middle" font-size="11" fill="#64748b">Lead ทั้งหมด</text>
+          </g>
+        </svg>
+        <div class="dlegend" id="donut-legend"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="sg">
+    <div class="card">
+      <div class="ct">จำนวน Lead และอัตราผ่านคุณสมบัติรายเดือน</div>
+      <div class="cd">แท่ง: จำนวน Lead · เส้น: อัตราผ่านคุณสมบัติ (ร้อยละ)</div>
+      <div class="cb"><canvas id="chartLead"></canvas></div>
+    </div>
+    <div class="card">
+      <div class="ct">ความสัมพันธ์ระหว่างงบโฆษณากับต้นทุนต่อ Lead</div>
+      <div class="cd">แท่ง: งบโฆษณา (พันบาท) · เส้น: ต้นทุนต่อ Lead (บาท)</div>
+      <div class="cb"><canvas id="chartAds"></canvas></div>
+    </div>
+  </div>
+
+  <div class="sect"><h2>ผลการขายและไปป์ไลน์</h2><span>มูลค่าโอกาสทางการขายเทียบกับยอดขายที่ปิดได้จริง</span></div>
+  <div class="fc">
+    <div class="ct">เปรียบเทียบมูลค่าโอกาสทางการขายกับยอดขายที่ปิดได้</div>
+    <div class="cd">จำแนกรายเดือน · หน่วย: ล้านบาท</div>
+    <div class="cb tall"><canvas id="chartCompare"></canvas></div>
+  </div>
+
+  <div class="fc">
+    <div class="ct">สรุปผลการตลาดรายเดือน</div>
+    <div class="table-wrap"><table id="tbl-monthly">
+      <thead><tr>
+        <th>เดือน</th><th class="num">Lead</th><th class="num">ผ่านคุณสมบัติ</th><th class="num">เสนอราคา</th>
+        <th class="num">มูลค่าที่คาดว่าจะขาย</th><th class="num">ยอดขาย</th><th class="num">งบโฆษณา</th><th class="num hl">ต้นทุน/Lead</th>
+      </tr></thead>
+      <tbody></tbody>
+    </table></div>
+    <div class="note" id="monthly-note"></div>
+  </div>
+
+  <div class="sect"><h2>ผลการขายของทีมขาย</h2><span>อันดับยอดขายรายเดือน จำแนกตามกลุ่มงาน</span></div>
+  <div class="fc">
+    <div class="ct">อันดับยอดขายรายบุคคลจำแนกตามเดือน</div>
+    <div class="cd">เลือกกลุ่มงานเพื่อเปรียบเทียบเฉพาะกลุ่ม · หน่วย: บาท</div>
+    <div class="seg" id="seg-group"></div>
+    <div class="cb tall"><canvas id="chartRank"></canvas></div>
+  </div>
+
+  <div class="sg">
+    <div class="card">
+      <div class="ct">สรุปยอดขายรายบุคคล</div>
+      <div class="cd">รวมทุกช่องทางในช่วงเวลาที่เลือก</div>
+      <div class="table-wrap"><table id="tbl-person" class="tbl-bright"><thead><tr>
+        <th>อันดับ</th><th>พนักงานขาย</th><th>ทีม</th><th class="num">จำนวนดีล</th><th class="num">ยอดขายรวม</th><th class="num">สัดส่วน</th>
+      </tr></thead><tbody></tbody></table></div>
+    </div>
+    <div class="card">
+      <div class="ct">รายการยอดขายทั้งหมด</div>
+      <div class="cd">จำแนกตามเดือน พนักงานขาย กลุ่มงาน และช่องทาง</div>
+      <div class="table-wrap"><table id="tbl-sales" class="tbl-bright"><thead><tr>
+        <th>เดือน</th><th>พนักงานขาย</th><th>กลุ่มงาน</th><th>ช่องทาง</th><th class="num">ยอดขาย</th>
+      </tr></thead><tbody></tbody></table></div>
+    </div>
+  </div>
+
+  <div class="sg">
+    <div class="card">
+      <div class="ct">โครงการมูลค่าสูงสุด 5 อันดับ</div>
+      <div class="cd" id="top5-note"></div>
+      <div class="rank" id="top5"></div>
+    </div>
+    <div class="card">
+      <div class="ct">โครงการที่ปิดการขายแล้ว (WIN 100%)</div>
+      <div class="cd">รายการโครงการที่ยืนยันการปิดการขาย</div>
+      <div class="table-wrap"><table id="tbl-win"><thead><tr>
+        <th>พนักงาน</th><th>Project No.</th><th class="num">มูลค่า</th><th>ชื่อโครงการ</th>
+      </tr></thead><tbody></tbody></table></div>
+    </div>
+  </div>
+
+  <div class="sect"><h2>ตัวชี้วัดสื่อโฆษณา</h2><span>งบประมาณและประสิทธิภาพการโฆษณารายเดือน</span></div>
+  <div class="fc">
+    <div class="ct">Ads Metrics รายเดือน</div>
+    <div class="cd">งบประมาณ การมองเห็น การเข้าถึง และต้นทุนต่อหน่วย</div>
+    <div class="table-wrap"><table id="tbl-ads"><thead><tr>
+      <th>เดือน</th><th class="num">งบประมาณ</th><th class="num">Impressions</th><th class="num">Reach</th>
+      <th class="num">CPM</th><th class="num">CPC</th><th class="num">CTR</th><th class="num">Cost/Msg</th>
+    </tr></thead><tbody></tbody></table></div>
+  </div>
+
+</div>
+
+<!-- ============================ ฟอร์มบันทึก Report ============================ -->
+<div id="panel-input" class="panel">
+
+  <div id="dev-panel" class="dev-panel" hidden>
+    <div class="dev-head">
+      <div>
+        <div class="ct">โหมดผู้พัฒนา — นำเข้าข้อมูลจากไฟล์ .md</div>
+        <div class="cd">ใช้ทดสอบแทนการกรอกฟอร์มทีละช่อง ผู้ใช้ทั่วไปจะไม่เห็นส่วนนี้</div>
+      </div>
+      <button type="button" class="btn bs" id="dev-export">ส่งออกรายงานปัจจุบันเป็น .md</button>
+    </div>
+
+    <div class="dev-modes">
+      <label class="dev-opt"><input type="radio" name="dev-target" value="new" checked/>
+        <span>นำเข้าเป็น<b>รายงานใหม่</b></span></label>
+      <label class="dev-opt"><input type="radio" name="dev-target" value="append"/>
+        <span>เพิ่ม<b>ต่อท้ายรายงานปัจจุบัน</b></span></label>
+    </div>
+
+    <div id="dev-drop" class="dev-drop" role="button" tabindex="0">
+      <strong>ลากไฟล์ .md มาวางที่นี่ หรือคลิกเพื่อเลือกไฟล์</strong>
+      <span>รองรับทั้งไฟล์ sample-data.md แบบตารางรวม และ sample-data-fields.md แบบทีละช่อง</span>
+    </div>
+    <input type="file" id="dev-file" accept=".md,.markdown,.txt" hidden/>
+    <div id="dev-log" class="dev-log" hidden></div>
+  </div>
+
+  <div class="tabs" id="input-subtabs">
+    <button class="tab active" data-sub="mkt" onclick="switchSub('mkt')">1. สรุป MKT</button>
+    <button class="tab" data-sub="sales" onclick="switchSub('sales')">2. ยอดขาย</button>
+    <button class="tab" data-sub="pipeline" onclick="switchSub('pipeline')">3. ยอดประมาณการ</button>
+    <button class="tab" data-sub="win" onclick="switchSub('win')">4. WIN 100%</button>
+    <button class="tab" data-sub="ads" onclick="switchSub('ads')">5. Ads Metrics</button>
+  </div>
+
+  <!-- 1 -->
+  <div id="sub-mkt" class="sub-panel active">
+    <div class="form-s">
+      <h2>1. สรุปผลการตลาดรายเดือน</h2>
+      <div class="d">หนึ่งระเบียนต่อ หนึ่งเดือน หนึ่งช่องทาง · บันทึกซ้ำเดือนและช่องทางเดิมจะเขียนทับของเดิม</div>
+      <div class="fg">
+        <div><label for="m-month">เดือน <span class="req">*</span></label><select id="m-month"></select></div>
+        <div><label for="m-channel">ช่องทาง <span class="req">*</span></label><select id="m-channel"><option value="fb">Facebook</option><option value="line">Line OA</option></select></div>
+        <div><label for="m-intake">Lead ที่ได้รับ (INTAKE) <span class="req">*</span></label><input type="number" min="0" id="m-intake" placeholder="เช่น 119"/></div>
+        <div><label for="m-reject">ไม่ตรงคุณสมบัติ</label><input type="number" min="0" id="m-reject" placeholder="เช่น 81"/></div>
+        <div><label for="m-qualify">ผ่านคุณสมบัติ</label><input type="number" min="0" id="m-qualify" placeholder="เช่น 38"/></div>
+        <div><label for="m-follow">อยู่ระหว่างติดตาม (FOLLOW)</label><input type="number" min="0" id="m-follow" placeholder="เช่น 20"/></div>
+        <div><label for="m-quote">เสนอราคา (CONVERSION)</label><input type="number" min="0" id="m-quote" placeholder="เช่น 9"/></div>
+        <div><label for="m-close">ปิดการขาย (จำนวนดีล)</label><input type="number" min="0" id="m-close" placeholder="เช่น 1"/></div>
+        <div><label for="m-pipeline">มูลค่าที่คาดว่าจะขายได้ (บาท)</label><input type="number" min="0" id="m-pipeline" placeholder="เช่น 2420000"/></div>
+        <div><label for="m-ads">งบประมาณ ADS (บาท)</label><input type="number" min="0" id="m-ads" placeholder="เช่น 20000"/></div>
+        <div><label for="m-revenue">ยอดขายปิดจริง (บาท)</label><input type="text" id="m-revenue" readonly/></div>
+        <div><label for="m-roi">ROAS</label><input type="text" id="m-roi" readonly/></div>
+      </div>
+      <div class="calc">
+        <div><div class="k">ต้นทุนต่อ Lead</div><div class="v" style="color:#8b5cf6" id="m-cpl">—</div></div>
+        <div><div class="k">อัตราผ่านคุณสมบัติ</div><div class="v" style="color:#2563eb" id="m-qrate">—</div></div>
+        <div><div class="k">อัตราเสนอราคา</div><div class="v" style="color:#f97316" id="m-crate">—</div></div>
+        <div><div class="k">อัตราปิดการขาย</div><div class="v" style="color:#10b981" id="m-closerate">—</div></div>
+      </div>
+      <div class="note">ยอดขายปิดจริงและ ROAS คำนวณจากรายการใน <strong>แท็บ 2 ยอดขาย</strong> เพื่อไม่ให้ยอดขายมีสองแหล่งที่ขัดกัน</div>
+      <div class="fa">
+        <button class="btn bp" onclick="saveMkt()">บันทึกสรุป MKT</button>
+        <button class="btn bs" onclick="clearForm('mkt')">ล้างค่า</button>
+      </div>
+    </div>
+    <div class="fc">
+      <div class="ct">ระเบียนที่บันทึกไว้</div>
+      <div class="cd">คลิกแถวเพื่อดึงกลับมาแก้ไข</div>
+      <div class="table-wrap"><table id="rec-mkt"><thead><tr>
+        <th>เดือน</th><th>ช่องทาง</th><th class="num">Lead</th><th class="num">ผ่าน</th><th class="num">เสนอราคา</th>
+        <th class="num">ปิด</th><th class="num">มูลค่าคาดขาย</th><th class="num">งบ Ads</th><th></th>
+      </tr></thead><tbody></tbody></table></div>
+    </div>
+  </div>
+
+  <!-- 2 -->
+  <div id="sub-sales" class="sub-panel">
+    <div class="form-s">
+      <h2>2. บันทึกยอดขาย</h2>
+      <div class="d">แหล่งเดียวของยอดขายทั้งระบบ · หนึ่งแถวต่อหนึ่งรายการขาย</div>
+      <div class="fg">
+        <div><label for="s-month">เดือน <span class="req">*</span></label><select id="s-month"></select></div>
+        <div><label for="s-person">พนักงานขาย <span class="req">*</span></label><input type="text" id="s-person" placeholder="เช่น RT-Ole, PJ2-Champ"/></div>
+        <div><label for="s-team">ทีม</label><input type="text" id="s-team" placeholder="เช่น RT, PJ1, PJ2"/></div>
+        <div><label for="s-group">กลุ่มงาน <span class="req">*</span></label><select id="s-group"><option>Retail</option><option>Project 1</option><option>Project 2</option></select></div>
+        <div><label for="s-channel">ช่องทาง <span class="req">*</span></label><select id="s-channel"><option value="fb">Facebook</option><option value="line">Line OA</option></select></div>
+        <div><label for="s-revenue">ยอดขาย (บาท) <span class="req">*</span></label><input type="number" min="0" id="s-revenue" placeholder="เช่น 318094"/></div>
+        <div style="grid-column:span 2"><label for="s-customer">ลูกค้า / โครงการ</label><input type="text" id="s-customer" placeholder="ชื่อลูกค้าหรือโครงการ"/></div>
+      </div>
+      <div class="fa">
+        <button class="btn bp" onclick="saveSales()">บันทึกยอดขาย</button>
+        <button class="btn bs" onclick="clearForm('sales')">ล้างค่า</button>
+      </div>
+    </div>
+    <div class="fc">
+      <div class="ct">รายการยอดขายที่บันทึกไว้</div>
+      <div class="cd">ยอดรวมนี้คือตัวเลขที่ขึ้นบนการ์ด “ยอดขายที่ได้”</div>
+      <div class="table-wrap"><table id="rec-sales"><thead><tr>
+        <th>เดือน</th><th>พนักงานขาย</th><th>ทีม</th><th>กลุ่มงาน</th><th>ช่องทาง</th><th>ลูกค้า</th><th class="num">ยอดขาย</th><th></th>
+      </tr></thead><tbody></tbody></table></div>
+    </div>
+  </div>
+
+  <!-- 3 -->
+  <div id="sub-pipeline" class="sub-panel">
+    <div class="form-s">
+      <h2>3. บันทึกยอดประมาณการ / Pipeline</h2>
+      <div class="d">รายโครงการที่ประเมินมูลค่าแล้ว ใช้สร้างอันดับโครงการมูลค่าสูงสุด</div>
+      <div class="fg">
+        <div><label for="p-month">เดือน <span class="req">*</span></label><select id="p-month"></select></div>
+        <div><label for="p-team">ทีม / Lead</label><input type="text" id="p-team" placeholder="เช่น RT, PJ.1, PJ2"/></div>
+        <div><label for="p-sale">พนักงานขาย</label><input type="text" id="p-sale" placeholder="เช่น Mind, Ole, Ning, Ou"/></div>
+        <div><label for="p-channel">ช่องทาง <span class="req">*</span></label><select id="p-channel"><option value="fb">Facebook</option><option value="line">Line OA</option></select></div>
+        <div><label for="p-customer">ชื่อลูกค้า <span class="req">*</span></label><input type="text" id="p-customer" placeholder="ชื่อผู้ติดต่อ"/></div>
+        <div style="grid-column:span 2"><label for="p-company">บริษัท / รายละเอียดงาน</label><input type="text" id="p-company" placeholder="ชื่อบริษัทหรือรายละเอียดโครงการ"/></div>
+        <div><label for="p-value">ประมาณการมูลค่างาน (บาท) <span class="req">*</span></label><input type="number" min="0" id="p-value" placeholder="เช่น 500000"/></div>
+      </div>
+      <div class="fa">
+        <button class="btn bp" onclick="savePipeline()">บันทึกยอดประมาณการ</button>
+        <button class="btn bs" onclick="clearForm('pipeline')">ล้างค่า</button>
+      </div>
+    </div>
+    <div class="fc">
+      <div class="ct">รายการยอดประมาณการที่บันทึกไว้</div>
+      <div class="cd" id="pipe-sum"></div>
+      <div class="table-wrap"><table id="rec-pipeline"><thead><tr>
+        <th>เดือน</th><th>ทีม</th><th>พนักงาน</th><th>ลูกค้า</th><th>รายละเอียด</th><th>ช่องทาง</th><th class="num">มูลค่า</th><th></th>
+      </tr></thead><tbody></tbody></table></div>
+    </div>
+  </div>
+
+  <!-- 4 -->
+  <div id="sub-win" class="sub-panel">
+    <div class="form-s">
+      <h2>4. บันทึกโครงการที่ปิดการขาย</h2>
+      <div class="d">โครงการที่ยืนยันปิดได้แล้ว พร้อมเลขที่โครงการ</div>
+      <div class="fg">
+        <div><label for="w-month">เดือนที่ปิด</label><select id="w-month"></select></div>
+        <div><label for="w-sale">พนักงานขาย <span class="req">*</span></label><input type="text" id="w-sale" placeholder="เช่น Ning, Ou"/></div>
+        <div><label for="w-project">Project No. <span class="req">*</span></label><input type="text" id="w-project" placeholder="เช่น GOP2600029"/></div>
+        <div><label for="w-value">มูลค่าโครงการ (บาท) <span class="req">*</span></label><input type="number" min="0" id="w-value" placeholder="เช่น 417844"/></div>
+        <div style="grid-column:span 4"><label for="w-name">ชื่อโครงการ</label><input type="text" id="w-name" placeholder="รายละเอียดโครงการที่ปิดได้"/></div>
+      </div>
+      <div class="fa">
+        <button class="btn bp" onclick="saveWin()">บันทึก WIN 100%</button>
+        <button class="btn bs" onclick="clearForm('win')">ล้างค่า</button>
+      </div>
+    </div>
+    <div class="fc">
+      <div class="ct">รายการ WIN 100% ที่บันทึกไว้</div>
+      <div class="cd" id="win-sum"></div>
+      <div class="table-wrap"><table id="rec-win"><thead><tr>
+        <th>เดือน</th><th>พนักงาน</th><th>Project No.</th><th class="num">มูลค่า</th><th>ชื่อโครงการ</th><th></th>
+      </tr></thead><tbody></tbody></table></div>
+    </div>
+  </div>
+
+  <!-- 5 -->
+  <div id="sub-ads" class="sub-panel">
+    <div class="form-s">
+      <h2>5. บันทึก Ads Metrics</h2>
+      <div class="d">หนึ่งระเบียนต่อหนึ่งเดือน · บันทึกซ้ำเดือนเดิมจะเขียนทับของเดิม</div>
+      <div class="fg">
+        <div><label for="a-month">เดือน <span class="req">*</span></label><select id="a-month"></select></div>
+        <div><label for="a-budget">งบประมาณที่ใช้ (บาท)</label><input type="number" min="0" id="a-budget" placeholder="เช่น 16674"/></div>
+        <div><label for="a-impr">การมองเห็น (Impressions)</label><input type="number" min="0" id="a-impr" placeholder="เช่น 526013"/></div>
+        <div><label for="a-reach">เข้าถึงคน (Reach)</label><input type="number" min="0" id="a-reach" placeholder="เช่น 74278"/></div>
+        <div><label for="a-cpm">CPM (บาท)</label><input type="number" step="0.01" id="a-cpm" placeholder="เช่น 4.24"/></div>
+        <div><label for="a-cpc">CPC (บาท)</label><input type="number" step="0.0001" id="a-cpc" placeholder="เช่น 0.0855"/></div>
+        <div><label for="a-ctr">CTR (%)</label><input type="number" step="0.01" id="a-ctr" placeholder="เช่น 3.32"/></div>
+        <div><label for="a-cpmsg">Cost per Message (บาท)</label><input type="number" step="0.01" id="a-cpmsg" placeholder="เช่น 225.32"/></div>
+      </div>
+      <div class="note">งบประมาณในหน้านี้ใช้แสดงในตารางตัวชี้วัดสื่อโฆษณาเท่านั้น ส่วนงบที่นำไปคำนวณต้นทุนต่อ Lead และ ROAS ใช้ค่าจากช่อง “งบประมาณ ADS” ในแท็บสรุป MKT</div>
+      <div class="fa">
+        <button class="btn bp" onclick="saveAds()">บันทึก Ads Metrics</button>
+        <button class="btn bs" onclick="clearForm('ads')">ล้างค่า</button>
+      </div>
+    </div>
+    <div class="fc">
+      <div class="ct">ระเบียน Ads Metrics ที่บันทึกไว้</div>
+      <div class="cd">คลิกแถวเพื่อดึงกลับมาแก้ไข</div>
+      <div class="table-wrap"><table id="rec-ads"><thead><tr>
+        <th>เดือน</th><th class="num">งบ</th><th class="num">Impr.</th><th class="num">Reach</th>
+        <th class="num">CPM</th><th class="num">CPC</th><th class="num">CTR</th><th class="num">Cost/Msg</th><th></th>
+      </tr></thead><tbody></tbody></table></div>
+    </div>
+  </div>
+</div>
+
+</div><!-- /container -->
+
+<div id="toast" role="status" aria-live="polite"></div>
+
+<!-- กล่องสร้างแดชบอร์ดใหม่ และเปลี่ยนชื่อรายงาน -->
+<div id="newreport-overlay" class="overlay" hidden>
+  <div class="dialog" role="dialog" aria-modal="true" aria-labelledby="nr-title">
+    <div class="dialog-title" id="nr-title">สร้างแดชบอร์ดใหม่</div>
+    <label class="nr-label" for="nr-name">ชื่อรายงาน</label>
+    <input type="text" id="nr-name" class="nr-input" placeholder="เช่น รายงานผลการตลาด ก.ย.–ธ.ค. 2569"/>
+    <div id="nr-modes" class="nr-modes">
+      <label class="nr-opt"><input type="radio" name="nr-mode" value="blank" checked/>
+        <span><b>เริ่มจากว่างเปล่า</b><i>กรอกข้อมูลใหม่ทั้งหมดผ่านแท็บบันทึก Report</i></span></label>
+      <label class="nr-opt"><input type="radio" name="nr-mode" value="copy"/>
+        <span><b>คัดลอกจากรายงานที่เปิดอยู่</b><i>ได้ข้อมูลชุดเดิมมาแก้ต่อ โดยไม่กระทบรายงานเดิม</i></span></label>
+    </div>
+    <div class="dialog-actions">
+      <button type="button" class="btn bs" id="nr-cancel">ยกเลิก</button>
+      <button type="button" class="btn bp" id="nr-ok">สร้างรายงาน</button>
+    </div>
+  </div>
+</div>
+
+<!-- กล่องยืนยันก่อนลบ ใช้ร่วมกันทุกฟอร์ม -->
+<div id="confirm-overlay" class="overlay" hidden>
+  <div class="dialog" role="alertdialog" aria-modal="true" aria-labelledby="confirm-title" aria-describedby="confirm-msg">
+    <div class="dialog-title" id="confirm-title">ยืนยันการลบรายการ</div>
+    <div class="dialog-msg" id="confirm-msg"></div>
+    <div class="dialog-note">เมื่อลบแล้วตัวเลขบนแดชบอร์ดจะคำนวณใหม่ทันที และไม่สามารถกู้คืนรายการนี้ได้</div>
+    <div class="dialog-actions">
+      <button type="button" class="btn bs" id="confirm-cancel">ยกเลิก</button>
+      <button type="button" class="btn bdel" id="confirm-ok">ลบรายการ</button>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script src="assets/js/app-config.js"></script>
+<script src="assets/js/config.js"></script>
+<script src="assets/js/data.js"></script>
+<script src="assets/js/utils.js"></script>
+<script src="assets/js/api.js"></script>
+<script src="assets/js/compute.js"></script>
+<script src="assets/js/charts.js"></script>
+<script src="assets/js/render.js"></script>
+<script src="assets/js/forms.js"></script>
+<script src="assets/js/reports.js"></script>
+<script src="assets/js/devtools.js"></script>
+<script src="assets/js/main.js"></script>
+</body>
+</html>
